@@ -1,28 +1,19 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../model/product_model.dart';
+
 class ApiService {
-  static const baseUrl = "https://fakestoreapi.com";
+  static const String baseUrl = "https://fakestoreapi.com/products";
 
-  Future<List<dynamic>> fetchProducts() async {
-    final response = await http.get(Uri.parse("$baseUrl/products"));
-    return jsonDecode(response.body);
-  }
+  Future<List<ProductModel>> fetchProducts() async {
+    final response = await http.get(Uri.parse(baseUrl));
 
-  Future<bool> login(String username, String password) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/auth/login"),
-      body: {
-        "username": username,
-        "password": password,
-      },
-    );
-
-    return response.statusCode == 200;
-  }
-
-  Future<Map<String, dynamic>> fetchUser() async {
-    final response = await http.get(Uri.parse("$baseUrl/users/1"));
-    return jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      List data = json.decode(response.body);
+      return data.map((e) => ProductModel.fromJson(e)).toList();
+    } else {
+      throw Exception("Failed to load products");
+    }
   }
 }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-class ProductCard extends StatelessWidget {
+class BestSellingCard extends StatelessWidget {
   final String imageUrl;
   final String title;
   final double price;
   final double rating;
 
-  const ProductCard({
+  const BestSellingCard({
     super.key,
     required this.imageUrl,
     required this.title,

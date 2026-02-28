@@ -20,7 +20,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void loadUser() async {
-    user = await _api.fetchUser();
+    // user = await _api.fetchUser();
     setState(() {});
   }
 

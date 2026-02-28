@@ -1,11 +1,11 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:zavisoft_interview_task/screens/profile_screen.dart';
-
+import '../model/product_model.dart';
 import '../service/api_service.dart';
-import '../widgets/product_tile.dart';
 import '../widgets/best_selling_card.dart';
+import '../widgets/product_tile.dart';
 import '../widgets/stricky_tab_deligate.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,7 +19,9 @@ class _HomeScreenState extends State<HomeScreen>
   late TabController _tabController;
   final ApiService _api = ApiService();
 
-  List products = [];
+  List<ProductModel> products = [];
+  bool isLoading = true;
+  String? error;
 
   final List<String> imgList = [
     'https://picsum.photos/800/400?image=1',
@@ -35,14 +37,39 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> loadProducts() async {
-    products = await _api.fetchProducts();
-    setState(() {});
+    try {
+      setState(() {
+        isLoading = true;
+        error = null;
+      });
+
+      final data = await _api.fetchProducts();
+
+      setState(() {
+        products = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+        isLoading = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  List<ProductModel> filterByCategory(String category) {
+    if (category == "All") return products;
+    return products
+        .where((product) => product.category.toLowerCase().contains(
+      category.toLowerCase(),
+    ))
+        .toList();
   }
 
   @override
@@ -60,13 +87,9 @@ class _HomeScreenState extends State<HomeScreen>
       body: SafeArea(
         child: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
-
-            /// ------------------ SLIDER APP BAR ------------------
+            /// SLIDER
             SliverAppBar(
               expandedHeight: 260,
-              floating: false,
-              pinned: false,
-              elevation: 0,
               backgroundColor: Colors.white,
               flexibleSpace: FlexibleSpaceBar(
                 background: Padding(
@@ -76,16 +99,17 @@ class _HomeScreenState extends State<HomeScreen>
                       height: 200,
                       autoPlay: true,
                       enlargeCenterPage: true,
-                      autoPlayInterval: const Duration(seconds: 3),
+                      autoPlayInterval:
+                      const Duration(seconds: 3),
                       viewportFraction: 0.85,
                     ),
                     items: imgList
                         .map(
                           (item) => Container(
-                        margin:
-                        const EdgeInsets.symmetric(horizontal: 6),
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius:
+                          BorderRadius.circular(16),
                           child: Image.network(
                             item,
                             fit: BoxFit.cover,
@@ -100,13 +124,14 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
-            /// ------------------ GRID SECTION ------------------
+            /// GRID SECTION
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: GridView.builder(
                   shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics:
+                  const NeverScrollableScrollPhysics(),
                   gridDelegate:
                   const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
@@ -114,22 +139,18 @@ class _HomeScreenState extends State<HomeScreen>
                     mainAxisSpacing: 12,
                     childAspectRatio: 0.55,
                   ),
-                  itemCount: 6,
+                  itemCount: products.length > 6
+                      ? 6
+                      : products.length,
                   itemBuilder: (context, index) {
-                    return ProductCard(
-                      imageUrl:
-                      "https://picsum.photos/200?random=$index",
-                      title:
-                      "Premium Headphone Wireless Bluetooth",
-                      price: 59.99,
-                      rating: 4.5,
-                    );
+                    final product = products[index];
+                    return BestSellingCard(imageUrl: product.image, title: product.title, price: product.price, rating: product.rating,);
                   },
                 ),
               ),
             ),
 
-            /// ------------------ STICKY TAB BAR ------------------
+            /// STICKY TAB BAR
             SliverPersistentHeader(
               pinned: true,
               delegate: StickyTabDelegate(
@@ -147,13 +168,13 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ],
 
-          /// ------------------ TAB CONTENT ------------------
+          /// TAB CONTENT
           body: TabBarView(
             controller: _tabController,
             children: [
-              buildProductList(),
-              buildProductList(),
-              buildProductList(),
+              buildProductList("All"),
+              buildProductList("electronics"),
+              buildProductList("clothing"),
             ],
           ),
         ),
@@ -161,30 +182,29 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// ------------------ PRODUCT LIST ------------------
-  Widget buildProductList() {
+  Widget buildProductList(String category) {
+    final filtered = filterByCategory(category);
+
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (error != null) {
+      return Center(
+        child: Text(error!),
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: loadProducts,
-      child: CustomScrollView(
-        slivers: [
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                if (products.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-                return ProductTile(product: products[index]);
-              },
-              childCount:
-              products.isEmpty ? 1 : products.length,
-            ),
-          ),
-        ],
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: filtered.length,
+        itemBuilder: (context, index) {
+          return ProductTile(product: filtered[index]);
+        },
       ),
     );
   }
